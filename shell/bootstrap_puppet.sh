@@ -45,6 +45,33 @@ else
   echo 'git found.'
 fi
 
+# Ubuntu14.04 requires ruby-dev to install 'mkmf' 
+# which is required to install librarian-puppet
+
+$(dpkg -s ruby-dev > /dev/null 2>&1)
+FOUND_RUBY_DEV=$?
+if [ "$FOUND_RUBY_DEV" -ne '0' ]; then
+  echo 'Attempting to install ruby-dev.'
+  $(which apt-get > /dev/null 2>&1)
+  FOUND_APT=$?
+  $(which yum > /dev/null 2>&1)
+  FOUND_YUM=$?
+
+  if [ "${FOUND_YUM}" -eq '0' ]; then
+    yum -q -y makecache
+    yum -q -y install ruby-dev
+    echo 'ruby-dev installed.'
+  elif [ "${FOUND_APT}" -eq '0' ]; then
+    apt-get -q -y update
+    apt-get -q -y install ruby-dev
+    echo 'ruby-dev installed.'
+  else
+    echo 'No package installer available. You may need to install git manually.'
+  fi
+else
+  echo 'ruby-dev found.'
+fi
+
 if [ "$(gem search -i bundler)" = "false" ]; then
   gem install bundler
 fi
@@ -56,3 +83,10 @@ if [ "$(gem search -i librarian-puppet)" = "false" ]; then
 else
   cd $PUPPET_DIR && librarian-puppet update
 fi
+
+# generate sensu SSL certificates to the puppet manifest can use them
+cd /root
+wget http://sensuapp.org/docs/0.16/tools/ssl_certs.tar
+tar -xvf ssl_certs.tar
+cd ssl_certs
+./ssl_certs.sh generate
